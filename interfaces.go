@@ -2,9 +2,14 @@ package kleiogithub
 
 import "context"
 
-// WorkspaceLookup resolves a workspace from a GitHub App installation ID.
+// WorkspaceLookup resolves a workspace from a GitHub App installation ID
+// and links installations to workspaces on first install.
 type WorkspaceLookup interface {
 	FindByInstallationID(ctx context.Context, installationID int) (WorkspaceRef, error)
+	// LinkInstallation associates a GitHub App installation ID with the
+	// workspace that matches the given owner login. Called automatically
+	// when the App is installed on an org or user account.
+	LinkInstallation(ctx context.Context, installationID int, ownerLogin string) (WorkspaceRef, error)
 }
 
 // RepoStore manages repository records in a workspace.

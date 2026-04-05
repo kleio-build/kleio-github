@@ -78,14 +78,17 @@ func (h *WebhookHandler) HandlePullRequest(ctx context.Context, event *PullReque
 	})
 }
 
-// HandleInstallation processes an installation event (repos added on first install).
+// HandleInstallation processes an installation event. On "created", it links
+// the installation ID to the matching workspace and syncs the initial repos.
 func (h *WebhookHandler) HandleInstallation(ctx context.Context, event *InstallationEvent) error {
 	if event.Action != "created" {
 		return nil
 	}
 
-	ws, err := h.workspace.FindByInstallationID(ctx, event.Installation.ID)
+	ownerLogin := event.Installation.Account.Login
+	ws, err := h.workspace.LinkInstallation(ctx, event.Installation.ID, ownerLogin)
 	if err != nil {
+		fmt.Printf("installation link: no workspace for %q (installation %d): %v\n", ownerLogin, event.Installation.ID, err)
 		return nil
 	}
 

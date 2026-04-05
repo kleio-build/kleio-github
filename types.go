@@ -114,7 +114,14 @@ type GHAuthor struct {
 
 // GHInstall is the installation reference in webhook payloads.
 type GHInstall struct {
-	ID int `json:"id"`
+	ID      int            `json:"id"`
+	Account GHInstallOwner `json:"account"`
+}
+
+// GHInstallOwner is the account (org or user) that owns an installation.
+type GHInstallOwner struct {
+	Login string `json:"login"`
+	Type  string `json:"type"`
 }
 
 // PullRequestEvent is the GitHub webhook pull_request event payload.
