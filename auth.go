@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"golang.org/x/oauth2"
 	oauthgithub "golang.org/x/oauth2/github"
@@ -298,6 +299,101 @@ func FetchUserEmails(ctx context.Context, accessToken string) (string, error) {
 		}
 	}
 	return fallback, nil
+}
+
+// DeviceCodeResponse is returned by GitHub's device authorization endpoint.
+type DeviceCodeResponse struct {
+	DeviceCode      string `json:"device_code"`
+	UserCode        string `json:"user_code"`
+	VerificationURI string `json:"verification_uri"`
+	ExpiresIn       int    `json:"expires_in"`
+	Interval        int    `json:"interval"`
+}
+
+// DeviceTokenResponse is returned when polling GitHub's token endpoint during
+// the device flow. On success, AccessToken is populated. While the user hasn't
+// authorized yet, Error is "authorization_pending" or "slow_down".
+type DeviceTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	Scope        string `json:"scope"`
+	Error        string `json:"error,omitempty"`
+	ErrorDesc    string `json:"error_description,omitempty"`
+	Interval     int    `json:"interval,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+// RequestDeviceCode initiates a GitHub device authorization flow. The returned
+// DeviceCodeResponse contains the user_code to display and verification_uri to
+// open in a browser. Only requires client_id (no secret).
+func RequestDeviceCode(ctx context.Context, clientID string) (*DeviceCodeResponse, error) {
+	form := url.Values{
+		"client_id": {clientID},
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://github.com/login/device/code", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.URL.RawQuery = form.Encode()
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("device code request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("device code request returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result DeviceCodeResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("parse device code response: %w", err)
+	}
+	if result.DeviceCode == "" {
+		return nil, fmt.Errorf("empty device_code in response: %s", string(body))
+	}
+	return &result, nil
+}
+
+// PollDeviceToken polls GitHub's token endpoint for a device flow authorization.
+// Returns a DeviceTokenResponse whose Error field indicates the current state:
+//   - "": success, AccessToken is populated
+//   - "authorization_pending": user hasn't authorized yet
+//   - "slow_down": caller should increase polling interval
+//   - "expired_token": device code expired
+//   - "access_denied": user cancelled
+func PollDeviceToken(ctx context.Context, clientID, deviceCode string) (*DeviceTokenResponse, error) {
+	form := url.Values{
+		"client_id":   {clientID},
+		"device_code": {deviceCode},
+		"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://github.com/login/oauth/access_token", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.URL.RawQuery = form.Encode()
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("device token poll: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("device token poll returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result DeviceTokenResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("parse device token response: %w", err)
+	}
+	return &result, nil
 }
 
 func fetchRepoPage(ctx context.Context, accessToken, url string) ([]Repo, bool, error) {
