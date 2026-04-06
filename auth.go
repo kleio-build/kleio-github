@@ -207,6 +207,55 @@ func FetchUserRepos(ctx context.Context, accessToken string) ([]Repo, error) {
 	return all, nil
 }
 
+// AppInstallation represents a GitHub App installation accessible to the user.
+type AppInstallation struct {
+	ID      int              `json:"id"`
+	Account AppInstallTarget `json:"account"`
+	AppSlug string           `json:"app_slug"`
+}
+
+// AppInstallTarget is the account (org or user) that owns an installation.
+type AppInstallTarget struct {
+	Login string `json:"login"`
+	Type  string `json:"type"`
+}
+
+// FetchUserInstallations lists GitHub App installations accessible to the
+// authenticated user. Returns a map of account login -> installation ID for
+// easy lookup during onboarding.
+func FetchUserInstallations(ctx context.Context, accessToken string) (map[string]int, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET",
+		"https://api.github.com/user/installations?per_page=100", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil
+	}
+
+	var result struct {
+		Installations []AppInstallation `json:"installations"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	instMap := make(map[string]int, len(result.Installations))
+	for _, inst := range result.Installations {
+		instMap[inst.Account.Login] = inst.ID
+	}
+	return instMap, nil
+}
+
 func fetchRepoPage(ctx context.Context, accessToken, url string) ([]Repo, bool, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

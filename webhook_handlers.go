@@ -121,5 +121,19 @@ func (h *WebhookHandler) resolveWorkspace(ctx context.Context, install *GHInstal
 	if install == nil {
 		return WorkspaceRef{}, fmt.Errorf("no installation in event")
 	}
-	return h.workspace.FindByInstallationID(ctx, install.ID)
+	ws, err := h.workspace.FindByInstallationID(ctx, install.ID)
+	if err == nil {
+		return ws, nil
+	}
+	// Fallback: the installation.created webhook may have been missed
+	// (e.g. deployed after the app was installed). Try linking now using
+	// the account login embedded in every webhook payload.
+	if install.Account.Login != "" {
+		ws, linkErr := h.workspace.LinkInstallation(ctx, install.ID, install.Account.Login)
+		if linkErr == nil {
+			fmt.Printf("auto-linked installation %d to workspace via %s (fallback)\n", install.ID, install.Account.Login)
+			return ws, nil
+		}
+	}
+	return WorkspaceRef{}, err
 }
