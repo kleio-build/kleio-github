@@ -97,6 +97,100 @@ func (h *WebhookHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		if err := h.HandleInstallationRepos(ctx, &event); err != nil {
 			fmt.Printf("webhook installation repos error: %v\n", err)
 		}
+	case "workflow_run":
+		var event WorkflowRunEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleWorkflowRun(ctx, &event); err != nil {
+			fmt.Printf("webhook workflow_run error: %v\n", err)
+		}
+	case "deployment_status":
+		var event DeploymentStatusEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleDeploymentStatus(ctx, &event); err != nil {
+			fmt.Printf("webhook deployment_status error: %v\n", err)
+		}
+	case "discussion":
+		var event DiscussionEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleDiscussion(ctx, &event); err != nil {
+			fmt.Printf("webhook discussion error: %v\n", err)
+		}
+	case "dependabot_alert":
+		var event DependabotAlertEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleDependabotAlert(ctx, &event); err != nil {
+			fmt.Printf("webhook dependabot_alert error: %v\n", err)
+		}
+	case "code_scanning_alert":
+		var event CodeScanningAlertEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleCodeScanningAlert(ctx, &event); err != nil {
+			fmt.Printf("webhook code_scanning_alert error: %v\n", err)
+		}
+	case "pull_request_review":
+		var event PullRequestReviewEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandlePullRequestReview(ctx, &event); err != nil {
+			fmt.Printf("webhook pull_request_review error: %v\n", err)
+		}
+	case "security_advisory":
+		var event SecurityAdvisoryEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleSecurityAdvisory(ctx, &event); err != nil {
+			fmt.Printf("webhook security_advisory error: %v\n", err)
+		}
+	case "issues":
+		var event IssuesEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleIssues(ctx, &event); err != nil {
+			fmt.Printf("webhook issues error: %v\n", err)
+		}
+	case "check_suite":
+		var event CheckSuiteEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleCheckSuite(ctx, &event); err != nil {
+			fmt.Printf("webhook check_suite error: %v\n", err)
+		}
+	case "check_run":
+		var event CheckRunEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := h.HandleCheckRun(ctx, &event); err != nil {
+			fmt.Printf("webhook check_run error: %v\n", err)
+		}
+	case "status":
+		fmt.Printf("status event: state=%s\n", "received")
+	case "installation_target", "meta":
+		fmt.Printf("infrastructure event: %s\n", eventType)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -170,3 +170,269 @@ type GHRepoShort struct {
 	ID       int    `json:"id"`
 	FullName string `json:"full_name"`
 }
+
+// ---------------------------------------------------------------------------
+// New signal-producing event types
+// ---------------------------------------------------------------------------
+
+type WorkflowRunEvent struct {
+	Action       string       `json:"action"`
+	WorkflowRun  GHWorkflowRun `json:"workflow_run"`
+	Repository   GHRepository `json:"repository"`
+	Installation *GHInstall   `json:"installation"`
+}
+
+type GHWorkflowRun struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	HTMLURL    string `json:"html_url"`
+	HeadSHA    string `json:"head_sha"`
+	HeadBranch string `json:"head_branch"`
+	RunNumber  int    `json:"run_number"`
+	Actor      GHUser `json:"actor"`
+}
+
+type DeploymentStatusEvent struct {
+	Action           string             `json:"action"`
+	DeploymentStatus GHDeploymentStatus `json:"deployment_status"`
+	Deployment       GHDeployment       `json:"deployment"`
+	Repository       GHRepository       `json:"repository"`
+	Installation     *GHInstall         `json:"installation"`
+}
+
+type GHDeployment struct {
+	ID          int64  `json:"id"`
+	Ref         string `json:"ref"`
+	Environment string `json:"environment"`
+	Creator     GHUser `json:"creator"`
+}
+
+type GHDeploymentStatus struct {
+	ID          int64  `json:"id"`
+	State       string `json:"state"`
+	Description string `json:"description"`
+	TargetURL   string `json:"target_url"`
+}
+
+type DiscussionEvent struct {
+	Action       string       `json:"action"`
+	Discussion   GHDiscussion `json:"discussion"`
+	Repository   GHRepository `json:"repository"`
+	Installation *GHInstall   `json:"installation"`
+}
+
+type GHDiscussion struct {
+	Number   int                  `json:"number"`
+	Title    string               `json:"title"`
+	Body     string               `json:"body"`
+	HTMLURL  string               `json:"html_url"`
+	User     GHUser               `json:"user"`
+	Category GHDiscussionCategory `json:"category"`
+}
+
+type GHDiscussionCategory struct {
+	Name string `json:"name"`
+}
+
+type DependabotAlertEvent struct {
+	Action       string            `json:"action"`
+	Alert        GHDependabotAlert `json:"alert"`
+	Repository   GHRepository      `json:"repository"`
+	Installation *GHInstall        `json:"installation"`
+}
+
+type GHDependabotAlert struct {
+	Number   int                    `json:"number"`
+	State    string                 `json:"state"`
+	Summary  string                 `json:"summary"`
+	Severity string                 `json:"severity"`
+	HTMLURL  string                 `json:"html_url"`
+	Package  GHDependabotPackage    `json:"dependency"`
+}
+
+type GHDependabotPackage struct {
+	Name string `json:"name"`
+}
+
+type CodeScanningAlertEvent struct {
+	Action       string               `json:"action"`
+	Alert        GHCodeScanningAlert  `json:"alert"`
+	Repository   GHRepository         `json:"repository"`
+	Installation *GHInstall           `json:"installation"`
+}
+
+type GHCodeScanningAlert struct {
+	Number  int                `json:"number"`
+	State   string             `json:"state"`
+	Rule    GHCodeScanningRule `json:"rule"`
+	HTMLURL string             `json:"html_url"`
+}
+
+type GHCodeScanningRule struct {
+	Severity    string `json:"severity"`
+	Description string `json:"description"`
+}
+
+type PullRequestReviewEvent struct {
+	Action       string        `json:"action"`
+	Review       GHPRReview    `json:"review"`
+	PullRequest  GHPullRequest `json:"pull_request"`
+	Repository   GHRepository  `json:"repository"`
+	Installation *GHInstall    `json:"installation"`
+}
+
+type GHPRReview struct {
+	ID      int64  `json:"id"`
+	State   string `json:"state"`
+	Body    string `json:"body"`
+	HTMLURL string `json:"html_url"`
+	User    GHUser `json:"user"`
+}
+
+type SecurityAdvisoryEvent struct {
+	Action   string             `json:"action"`
+	Advisory GHSecurityAdvisory `json:"security_advisory"`
+}
+
+type GHSecurityAdvisory struct {
+	GHSAID   string `json:"ghsa_id"`
+	Summary  string `json:"summary"`
+	Severity string `json:"severity"`
+	HTMLURL  string `json:"html_url"`
+}
+
+type IssuesEvent struct {
+	Action       string       `json:"action"`
+	Issue        GHIssue      `json:"issue"`
+	Repository   GHRepository `json:"repository"`
+	Installation *GHInstall   `json:"installation"`
+}
+
+type GHIssue struct {
+	Number  int       `json:"number"`
+	Title   string    `json:"title"`
+	Body    string    `json:"body"`
+	State   string    `json:"state"`
+	HTMLURL string    `json:"html_url"`
+	User    GHUser    `json:"user"`
+	Labels  []GHLabel `json:"labels"`
+}
+
+type GHLabel struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+// ---------------------------------------------------------------------------
+// Context/infrastructure events (logged, no captures in v0)
+// ---------------------------------------------------------------------------
+
+type CheckSuiteEvent struct {
+	Action       string       `json:"action"`
+	CheckSuite   GHCheckSuite `json:"check_suite"`
+	Repository   GHRepository `json:"repository"`
+	Installation *GHInstall   `json:"installation"`
+}
+
+type GHCheckSuite struct {
+	ID         int64  `json:"id"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	HeadSHA    string `json:"head_sha"`
+}
+
+type CheckRunEvent struct {
+	Action       string       `json:"action"`
+	CheckRun     GHCheckRun   `json:"check_run"`
+	Repository   GHRepository `json:"repository"`
+	Installation *GHInstall   `json:"installation"`
+}
+
+type GHCheckRun struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+}
+
+type StatusEvent struct {
+	State        string       `json:"state"`
+	SHA          string       `json:"sha"`
+	Context      string       `json:"context"`
+	TargetURL    string       `json:"target_url"`
+	Repository   GHRepository `json:"repository"`
+	Installation *GHInstall   `json:"installation"`
+}
+
+// ---------------------------------------------------------------------------
+// New payload types for emitter interface
+// ---------------------------------------------------------------------------
+
+type CIRunPayload struct {
+	RunID        int64
+	Name         string
+	Conclusion   string
+	HTMLURL      string
+	HeadSHA      string
+	HeadBranch   string
+	RunNumber    int
+	ActorLogin   string
+	RepoFullName string
+}
+
+type DeploymentPayload struct {
+	Environment  string
+	Status       string
+	Description  string
+	HTMLURL      string
+	Ref          string
+	ActorLogin   string
+	RepoFullName string
+}
+
+type DiscussionPayload struct {
+	Number       int
+	Title        string
+	Body         string
+	Category     string
+	HTMLURL      string
+	AuthorLogin  string
+	Action       string
+	RepoFullName string
+}
+
+type SecurityAlertPayload struct {
+	AlertType    string
+	Number       int
+	State        string
+	Severity     string
+	Summary      string
+	HTMLURL      string
+	Package      string
+	Rule         string
+	RepoFullName string
+}
+
+type PRReviewPayload struct {
+	PRNumber      int
+	PRTitle       string
+	ReviewState   string
+	ReviewBody    string
+	ReviewURL     string
+	ReviewerLogin string
+	RepoFullName  string
+}
+
+type IssuePayload struct {
+	Number       int
+	Title        string
+	Body         string
+	State        string
+	HTMLURL      string
+	AuthorLogin  string
+	Labels       []string
+	Action       string
+	RepoFullName string
+}

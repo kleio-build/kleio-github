@@ -24,4 +24,10 @@ type RepoStore interface {
 type CaptureEmitter interface {
 	EmitGitCommit(ctx context.Context, workspaceID string, commit CommitPayload) error
 	EmitGitPR(ctx context.Context, workspaceID string, pr PRPayload) error
+	EmitCIRun(ctx context.Context, workspaceID string, run CIRunPayload) error
+	EmitDeployment(ctx context.Context, workspaceID string, deploy DeploymentPayload) error
+	EmitDiscussion(ctx context.Context, workspaceID string, disc DiscussionPayload) error
+	EmitSecurityAlert(ctx context.Context, workspaceID string, alert SecurityAlertPayload) error
+	EmitPRReview(ctx context.Context, workspaceID string, review PRReviewPayload) error
+	EmitIssue(ctx context.Context, workspaceID string, issue IssuePayload) error
 }
