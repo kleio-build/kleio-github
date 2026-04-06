@@ -256,6 +256,50 @@ func FetchUserInstallations(ctx context.Context, accessToken string) (map[string
 	return instMap, nil
 }
 
+// GitHubEmail represents an email address from the /user/emails endpoint.
+type GitHubEmail struct {
+	Email    string `json:"email"`
+	Primary  bool   `json:"primary"`
+	Verified bool   `json:"verified"`
+}
+
+// FetchUserEmails retrieves the authenticated user's email addresses.
+// Returns the primary verified email, falling back to any verified email.
+func FetchUserEmails(ctx context.Context, accessToken string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/user/emails", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("github emails API returned %d", resp.StatusCode)
+	}
+
+	var emails []GitHubEmail
+	if err := json.NewDecoder(resp.Body).Decode(&emails); err != nil {
+		return "", err
+	}
+
+	var fallback string
+	for _, e := range emails {
+		if e.Primary && e.Verified {
+			return e.Email, nil
+		}
+		if e.Verified && fallback == "" {
+			fallback = e.Email
+		}
+	}
+	return fallback, nil
+}
+
 func fetchRepoPage(ctx context.Context, accessToken, url string) ([]Repo, bool, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
