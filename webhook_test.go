@@ -60,6 +60,9 @@ func (okCapture) EmitSecurityAlert(ctx context.Context, workspaceID string, aler
 func (okCapture) EmitPRReview(ctx context.Context, workspaceID string, review PRReviewPayload) error {
 	return nil
 }
+func (okCapture) EmitPRReviewComment(ctx context.Context, workspaceID string, comment PRReviewCommentPayload) error {
+	return nil
+}
 func (okCapture) EmitIssue(ctx context.Context, workspaceID string, issue IssuePayload) error {
 	return nil
 }
