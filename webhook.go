@@ -60,6 +60,7 @@ func (h *WebhookHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	eventType := r.Header.Get("X-GitHub-Event")
 	ctx := r.Context()
 
+	var dispatchErr error
 	switch eventType {
 	case "push":
 		var event PushEvent
@@ -67,130 +68,118 @@ func (h *WebhookHandler) HandleHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandlePush(ctx, &event); err != nil {
-			fmt.Printf("webhook push error: %v\n", err)
-		}
+		dispatchErr = h.HandlePush(ctx, &event)
 	case "pull_request":
 		var event PullRequestEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandlePullRequest(ctx, &event); err != nil {
-			fmt.Printf("webhook PR error: %v\n", err)
-		}
+		dispatchErr = h.HandlePullRequest(ctx, &event)
 	case "installation":
 		var event InstallationEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleInstallation(ctx, &event); err != nil {
-			fmt.Printf("webhook installation error: %v\n", err)
-		}
+		dispatchErr = h.HandleInstallation(ctx, &event)
 	case "installation_repositories":
 		var event InstallationReposEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleInstallationRepos(ctx, &event); err != nil {
-			fmt.Printf("webhook installation repos error: %v\n", err)
-		}
+		dispatchErr = h.HandleInstallationRepos(ctx, &event)
 	case "workflow_run":
 		var event WorkflowRunEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleWorkflowRun(ctx, &event); err != nil {
-			fmt.Printf("webhook workflow_run error: %v\n", err)
-		}
+		dispatchErr = h.HandleWorkflowRun(ctx, &event)
 	case "deployment_status":
 		var event DeploymentStatusEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleDeploymentStatus(ctx, &event); err != nil {
-			fmt.Printf("webhook deployment_status error: %v\n", err)
-		}
+		dispatchErr = h.HandleDeploymentStatus(ctx, &event)
 	case "discussion":
 		var event DiscussionEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleDiscussion(ctx, &event); err != nil {
-			fmt.Printf("webhook discussion error: %v\n", err)
-		}
+		dispatchErr = h.HandleDiscussion(ctx, &event)
 	case "dependabot_alert":
 		var event DependabotAlertEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleDependabotAlert(ctx, &event); err != nil {
-			fmt.Printf("webhook dependabot_alert error: %v\n", err)
-		}
+		dispatchErr = h.HandleDependabotAlert(ctx, &event)
 	case "code_scanning_alert":
 		var event CodeScanningAlertEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleCodeScanningAlert(ctx, &event); err != nil {
-			fmt.Printf("webhook code_scanning_alert error: %v\n", err)
-		}
+		dispatchErr = h.HandleCodeScanningAlert(ctx, &event)
 	case "pull_request_review":
 		var event PullRequestReviewEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandlePullRequestReview(ctx, &event); err != nil {
-			fmt.Printf("webhook pull_request_review error: %v\n", err)
+		dispatchErr = h.HandlePullRequestReview(ctx, &event)
+	case "pull_request_review_comment":
+		var event PullRequestReviewCommentEvent
+		if err := json.Unmarshal(body, &event); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
 		}
+		dispatchErr = h.HandlePullRequestReviewComment(ctx, &event)
 	case "security_advisory":
 		var event SecurityAdvisoryEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleSecurityAdvisory(ctx, &event); err != nil {
-			fmt.Printf("webhook security_advisory error: %v\n", err)
-		}
+		dispatchErr = h.HandleSecurityAdvisory(ctx, &event)
 	case "issues":
 		var event IssuesEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleIssues(ctx, &event); err != nil {
-			fmt.Printf("webhook issues error: %v\n", err)
-		}
+		dispatchErr = h.HandleIssues(ctx, &event)
 	case "check_suite":
 		var event CheckSuiteEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleCheckSuite(ctx, &event); err != nil {
-			fmt.Printf("webhook check_suite error: %v\n", err)
-		}
+		dispatchErr = h.HandleCheckSuite(ctx, &event)
 	case "check_run":
 		var event CheckRunEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
 			return
 		}
-		if err := h.HandleCheckRun(ctx, &event); err != nil {
-			fmt.Printf("webhook check_run error: %v\n", err)
-		}
+		dispatchErr = h.HandleCheckRun(ctx, &event)
 	case "status":
 		fmt.Printf("status event: state=%s\n", "received")
 	case "installation_target", "meta":
 		fmt.Printf("infrastructure event: %s\n", eventType)
+	}
+
+	if dispatchErr != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		enc := json.NewEncoder(w)
+		enc.SetEscapeHTML(true)
+		_ = enc.Encode(map[string]string{"error": dispatchErr.Error()})
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

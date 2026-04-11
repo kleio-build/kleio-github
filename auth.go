@@ -7,10 +7,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"golang.org/x/oauth2"
 	oauthgithub "golang.org/x/oauth2/github"
 )
+
+// githubAPIHTTPClient bounds outbound GitHub REST calls (avoids hanging forever).
+var githubAPIHTTPClient = &http.Client{Timeout: 60 * time.Second}
 
 // AuthConfig configures the GitHub OAuth / GitHub App user-authorization flow.
 type AuthConfig struct {
@@ -96,7 +100,7 @@ func FetchUser(ctx context.Context, accessToken string) (*User, error) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := githubAPIHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +127,7 @@ func FetchUserOrgs(ctx context.Context, accessToken string) ([]Org, error) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := githubAPIHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +155,7 @@ func FetchOrgMembership(ctx context.Context, accessToken, org, username string) 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := githubAPIHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -233,7 +237,7 @@ func FetchUserInstallations(ctx context.Context, accessToken string) (map[string
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := githubAPIHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +278,7 @@ func FetchUserEmails(ctx context.Context, accessToken string) (string, error) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := githubAPIHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -337,7 +341,7 @@ func RequestDeviceCode(ctx context.Context, clientID string) (*DeviceCodeRespons
 	req.URL.RawQuery = form.Encode()
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := githubAPIHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("device code request: %w", err)
 	}
@@ -378,7 +382,7 @@ func PollDeviceToken(ctx context.Context, clientID, deviceCode string) (*DeviceT
 	req.URL.RawQuery = form.Encode()
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := githubAPIHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("device token poll: %w", err)
 	}
@@ -404,7 +408,7 @@ func fetchRepoPage(ctx context.Context, accessToken, url string) ([]Repo, bool, 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := githubAPIHTTPClient.Do(req)
 	if err != nil {
 		return nil, true, err
 	}

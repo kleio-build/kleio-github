@@ -37,7 +37,7 @@ func (h *WebhookHandler) HandlePush(ctx context.Context, event *PushEvent) error
 			Timestamp:    commit.Timestamp,
 		})
 		if err != nil {
-			fmt.Printf("failed to emit commit %s: %v\n", commit.ID[:8], err)
+			fmt.Printf("failed to emit commit %s: %v\n", shortSHA(commit.ID), err)
 		}
 	}
 
@@ -242,6 +242,38 @@ func (h *WebhookHandler) HandlePullRequestReview(ctx context.Context, event *Pul
 	})
 }
 
+// HandlePullRequestReviewComment processes a pull_request_review_comment event.
+// These capture individual inline comments, which are common from bots like
+// CodeRabbit and Bugbot.
+func (h *WebhookHandler) HandlePullRequestReviewComment(ctx context.Context, event *PullRequestReviewCommentEvent) error {
+	if event.Action != "created" {
+		return nil
+	}
+	ws, err := h.resolveWorkspace(ctx, event.Installation)
+	if err != nil {
+		return fmt.Errorf("find workspace: %w", err)
+	}
+
+	authorType := "User"
+	if event.Comment.User.Login == "" {
+		authorType = "Bot"
+	}
+
+	return h.captures.EmitPRReviewComment(ctx, ws.ID, PRReviewCommentPayload{
+		PRNumber:     event.PullRequest.Number,
+		PRTitle:      event.PullRequest.Title,
+		CommentID:    event.Comment.ID,
+		Body:         event.Comment.Body,
+		Path:         event.Comment.Path,
+		Line:         event.Comment.Line,
+		DiffHunk:     event.Comment.DiffHunk,
+		HTMLURL:      event.Comment.HTMLURL,
+		AuthorLogin:  event.Comment.User.Login,
+		AuthorType:   authorType,
+		RepoFullName: event.Repository.FullName,
+	})
+}
+
 // HandleSecurityAdvisory processes a security_advisory event (global, no repo).
 func (h *WebhookHandler) HandleSecurityAdvisory(ctx context.Context, event *SecurityAdvisoryEvent) error {
 	if event.Action != "published" {
@@ -280,7 +312,7 @@ func (h *WebhookHandler) HandleIssues(ctx context.Context, event *IssuesEvent) e
 
 // HandleCheckSuite logs check suite events (infrastructure for outbound checks).
 func (h *WebhookHandler) HandleCheckSuite(ctx context.Context, event *CheckSuiteEvent) error {
-	fmt.Printf("check_suite %s: %s (sha=%s)\n", event.Action, event.CheckSuite.Conclusion, event.CheckSuite.HeadSHA[:8])
+	fmt.Printf("check_suite %s: %s (sha=%s)\n", event.Action, event.CheckSuite.Conclusion, shortSHA(event.CheckSuite.HeadSHA))
 	return nil
 }
 

@@ -29,5 +29,6 @@ type CaptureEmitter interface {
 	EmitDiscussion(ctx context.Context, workspaceID string, disc DiscussionPayload) error
 	EmitSecurityAlert(ctx context.Context, workspaceID string, alert SecurityAlertPayload) error
 	EmitPRReview(ctx context.Context, workspaceID string, review PRReviewPayload) error
+	EmitPRReviewComment(ctx context.Context, workspaceID string, comment PRReviewCommentPayload) error
 	EmitIssue(ctx context.Context, workspaceID string, issue IssuePayload) error
 }

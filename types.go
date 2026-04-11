@@ -291,6 +291,24 @@ type GHPRReview struct {
 	User    GHUser `json:"user"`
 }
 
+type PullRequestReviewCommentEvent struct {
+	Action       string                `json:"action"`
+	Comment      GHPRReviewComment     `json:"comment"`
+	PullRequest  GHPullRequest         `json:"pull_request"`
+	Repository   GHRepository          `json:"repository"`
+	Installation *GHInstall            `json:"installation"`
+}
+
+type GHPRReviewComment struct {
+	ID       int64  `json:"id"`
+	Body     string `json:"body"`
+	Path     string `json:"path"`
+	Line     int    `json:"line"`
+	DiffHunk string `json:"diff_hunk"`
+	HTMLURL  string `json:"html_url"`
+	User     GHUser `json:"user"`
+}
+
 type SecurityAdvisoryEvent struct {
 	Action   string             `json:"action"`
 	Advisory GHSecurityAdvisory `json:"security_advisory"`
@@ -357,15 +375,6 @@ type GHCheckRun struct {
 	Conclusion string `json:"conclusion"`
 }
 
-type StatusEvent struct {
-	State        string       `json:"state"`
-	SHA          string       `json:"sha"`
-	Context      string       `json:"context"`
-	TargetURL    string       `json:"target_url"`
-	Repository   GHRepository `json:"repository"`
-	Installation *GHInstall   `json:"installation"`
-}
-
 // ---------------------------------------------------------------------------
 // New payload types for emitter interface
 // ---------------------------------------------------------------------------
@@ -422,6 +431,20 @@ type PRReviewPayload struct {
 	ReviewBody    string
 	ReviewURL     string
 	ReviewerLogin string
+	RepoFullName  string
+}
+
+type PRReviewCommentPayload struct {
+	PRNumber      int
+	PRTitle       string
+	CommentID     int64
+	Body          string
+	Path          string
+	Line          int
+	DiffHunk      string
+	HTMLURL       string
+	AuthorLogin   string
+	AuthorType    string // "User" or "Bot"
 	RepoFullName  string
 }
 
