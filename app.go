@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -35,6 +36,7 @@ type cachedToken struct {
 
 // NewAppService creates a new AppService.
 func NewAppService(cfg AppConfig) *AppService {
+	cfg.SignerURL = strings.TrimSuffix(strings.TrimSpace(cfg.SignerURL), "/")
 	return &AppService{
 		config:     cfg,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
