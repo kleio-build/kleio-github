@@ -71,6 +71,7 @@ type PRPayload struct {
 	AuthorLogin  string
 	RepoFullName string
 	Action       string
+	Timestamp    string
 }
 
 // RepoShortInfo is a minimal repo reference from installation events.
@@ -389,6 +390,7 @@ type CIRunPayload struct {
 	RunNumber    int
 	ActorLogin   string
 	RepoFullName string
+	Timestamp    string
 }
 
 type DeploymentPayload struct {
@@ -399,6 +401,7 @@ type DeploymentPayload struct {
 	Ref          string
 	ActorLogin   string
 	RepoFullName string
+	Timestamp    string
 }
 
 type DiscussionPayload struct {
@@ -410,6 +413,7 @@ type DiscussionPayload struct {
 	AuthorLogin  string
 	Action       string
 	RepoFullName string
+	Timestamp    string
 }
 
 type SecurityAlertPayload struct {
@@ -422,6 +426,7 @@ type SecurityAlertPayload struct {
 	Package      string
 	Rule         string
 	RepoFullName string
+	Timestamp    string
 }
 
 type PRReviewPayload struct {
@@ -432,6 +437,7 @@ type PRReviewPayload struct {
 	ReviewURL     string
 	ReviewerLogin string
 	RepoFullName  string
+	Timestamp     string
 }
 
 type PRReviewCommentPayload struct {
@@ -446,6 +452,7 @@ type PRReviewCommentPayload struct {
 	AuthorLogin   string
 	AuthorType    string // "User" or "Bot"
 	RepoFullName  string
+	Timestamp     string
 }
 
 type IssuePayload struct {
@@ -458,4 +465,6 @@ type IssuePayload struct {
 	Labels       []string
 	Action       string
 	RepoFullName string
+	Timestamp    string
 }
+
