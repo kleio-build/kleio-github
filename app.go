@@ -82,6 +82,10 @@ func (s *AppService) GetInstallationToken(ctx context.Context, installationID in
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	if idToken, err := fetchGCPIdentityToken(ctx, s.config.SignerURL); err == nil && idToken != "" {
+		req.Header.Set("Authorization", "Bearer "+idToken)
+	}
+
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("call signer: %w", err)
@@ -104,4 +108,33 @@ func (s *AppService) GetInstallationToken(ctx context.Context, installationID in
 	})
 
 	return result.Token, nil
+}
+
+// fetchGCPIdentityToken retrieves an OIDC identity token from the GCE metadata
+// server. On Cloud Run / GCE / GKE the server is always available; on local dev
+// it is not, so callers should treat errors as non-fatal.
+func fetchGCPIdentityToken(ctx context.Context, audience string) (string, error) {
+	metadataURL := "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=" + audience
+	req, err := http.NewRequestWithContext(ctx, "GET", metadataURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Metadata-Flavor", "Google")
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("metadata server returned %d", resp.StatusCode)
+	}
+
+	token, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(token)), nil
 }
