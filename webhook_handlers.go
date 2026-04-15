@@ -79,41 +79,35 @@ func (h *WebhookHandler) HandlePullRequest(ctx context.Context, event *PullReque
 }
 
 // HandleInstallation processes an installation event. On "created", it links
-// the installation ID to the matching workspace and syncs the initial repos.
+// the installation ID to the matching workspace. Repos are not auto-connected;
+// the user selects which repos to connect via onboarding or workspace settings.
 func (h *WebhookHandler) HandleInstallation(ctx context.Context, event *InstallationEvent) error {
 	if event.Action != "created" {
 		return nil
 	}
 
 	ownerLogin := event.Installation.Account.Login
-	ws, err := h.workspace.LinkInstallation(ctx, event.Installation.ID, ownerLogin)
+	_, err := h.workspace.LinkInstallation(ctx, event.Installation.ID, ownerLogin)
 	if err != nil {
 		fmt.Printf("installation link: no workspace for %q (installation %d): %v\n", ownerLogin, event.Installation.ID, err)
 		return nil
 	}
 
-	for _, r := range event.Repositories {
-		h.repos.EnsureRepoShort(ctx, ws.ID, RepoShortInfo{
-			ID:       r.ID,
-			FullName: r.FullName,
-		})
-	}
+	fmt.Printf("installation linked: %q (installation %d), %d repos available (not auto-connected)\n",
+		ownerLogin, event.Installation.ID, len(event.Repositories))
 	return nil
 }
 
 // HandleInstallationRepos processes repos added/removed from an existing installation.
+// Repos added to the installation are made available but not auto-connected to the workspace.
 func (h *WebhookHandler) HandleInstallationRepos(ctx context.Context, event *InstallationReposEvent) error {
-	ws, err := h.workspace.FindByInstallationID(ctx, event.Installation.ID)
+	_, err := h.workspace.FindByInstallationID(ctx, event.Installation.ID)
 	if err != nil {
 		return nil
 	}
 
-	for _, r := range event.RepositoriesAdded {
-		h.repos.EnsureRepoShort(ctx, ws.ID, RepoShortInfo{
-			ID:       r.ID,
-			FullName: r.FullName,
-		})
-	}
+	fmt.Printf("installation repos changed (installation %d): %d added, %d removed (not auto-connected)\n",
+		event.Installation.ID, len(event.RepositoriesAdded), len(event.RepositoriesRemoved))
 	return nil
 }
 
