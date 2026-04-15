@@ -30,10 +30,10 @@ func NewWebhookHandler(secret string, workspace WorkspaceLookup, repos RepoStore
 }
 
 // VerifySignature checks the X-Hub-Signature-256 header against the payload.
-// Returns true if the secret is empty (unconfigured) for backward compatibility.
+// Returns false if the secret is empty — webhooks must not be accepted without HMAC verification.
 func (h *WebhookHandler) VerifySignature(payload []byte, signature string) bool {
 	if h.secret == "" {
-		return true
+		return false
 	}
 	mac := hmac.New(sha256.New, []byte(h.secret))
 	mac.Write(payload)
