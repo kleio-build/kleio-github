@@ -83,7 +83,7 @@ func TestVerifySignature(t *testing.T) {
 	require.False(t, h.VerifySignature(body, "sha256=deadbeef"))
 
 	hEmpty := NewWebhookHandler("", nil, nil, nil)
-	require.True(t, hEmpty.VerifySignature(body, ""), "empty secret should skip verification (compat)")
+	require.False(t, hEmpty.VerifySignature(body, ""), "empty secret must reject — fail-closed")
 }
 
 func TestHandleHTTP_PushSuccess(t *testing.T) {
