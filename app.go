@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -82,7 +83,20 @@ func (s *AppService) GetInstallationToken(ctx context.Context, installationID in
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	if idToken, err := fetchGCPIdentityToken(ctx, s.config.SignerURL); err == nil && idToken != "" {
+	idToken, idErr := fetchGCPIdentityToken(ctx, s.config.SignerURL)
+	switch {
+	case s.config.SignerURL != "" && !isLocalSignerURL(s.config.SignerURL):
+		// Cloud Run → Cloud Run requires a Google ID token; the audience query param
+		// must be URL-encoded or the metadata server rejects the request and we
+		// would call the signer with no Authorization header (403).
+		if idErr != nil {
+			return "", fmt.Errorf("get id token for signer: %w", idErr)
+		}
+		if idToken == "" {
+			return "", fmt.Errorf("get id token for signer: empty token")
+		}
+		req.Header.Set("Authorization", "Bearer "+idToken)
+	case idToken != "":
 		req.Header.Set("Authorization", "Bearer "+idToken)
 	}
 
@@ -110,31 +124,50 @@ func (s *AppService) GetInstallationToken(ctx context.Context, installationID in
 	return result.Token, nil
 }
 
+func isLocalSignerURL(raw string) bool {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Host == "" {
+		return false
+	}
+	h := strings.ToLower(u.Hostname())
+	return h == "localhost" || h == "127.0.0.1" || h == "::1"
+}
+
 // fetchGCPIdentityToken retrieves an OIDC identity token from the GCE metadata
 // server. On Cloud Run / GCE / GKE the server is always available; on local dev
 // it is not, so callers should treat errors as non-fatal.
+//
+// The audience must be passed as a properly encoded query value; a raw URL
+// (e.g. https://....run.app) must not be concatenated unencoded, or the
+// metadata server may see a truncated audience and return an error.
 func fetchGCPIdentityToken(ctx context.Context, audience string) (string, error) {
-	metadataURL := "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=" + audience
-	req, err := http.NewRequestWithContext(ctx, "GET", metadataURL, nil)
+	if strings.TrimSpace(audience) == "" {
+		return "", nil
+	}
+	base, err := url.Parse("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity")
+	if err != nil {
+		return "", err
+	}
+	q := base.Query()
+	q.Set("audience", audience)
+	base.RawQuery = q.Encode()
+	req, err := http.NewRequestWithContext(ctx, "GET", base.String(), nil)
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Metadata-Flavor", "Google")
 
-	client := &http.Client{Timeout: 2 * time.Second}
+	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 
+	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("metadata server returned %d", resp.StatusCode)
+		return "", fmt.Errorf("metadata server returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
-	token, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(token)), nil
+	return strings.TrimSpace(string(body)), nil
 }
