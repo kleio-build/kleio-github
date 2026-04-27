@@ -144,6 +144,14 @@ type GHPullRequest struct {
 	Merged  bool   `json:"merged"`
 	HTMLURL string `json:"html_url"`
 	User    GHUser `json:"user"`
+	Head    GHRef  `json:"head"`
+	Base    GHRef  `json:"base"`
+}
+
+// GHRef is a git ref (branch/SHA) in pull request payloads.
+type GHRef struct {
+	Ref string `json:"ref"`
+	SHA string `json:"sha"`
 }
 
 // GHUser is a GitHub user in webhook payloads.

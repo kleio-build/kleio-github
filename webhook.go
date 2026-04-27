@@ -17,6 +17,8 @@ type WebhookHandler struct {
 	workspace WorkspaceLookup
 	repos     RepoStore
 	captures  CaptureEmitter
+	checker   CheckRunner
+	debouncer *PRDebouncer
 }
 
 // NewWebhookHandler creates a WebhookHandler with the given dependencies.
@@ -27,6 +29,12 @@ func NewWebhookHandler(secret string, workspace WorkspaceLookup, repos RepoStore
 		repos:     repos,
 		captures:  captures,
 	}
+}
+
+// WithCheckRunner adds PR change analysis support to the webhook handler.
+func (h *WebhookHandler) WithCheckRunner(checker CheckRunner, debouncer *PRDebouncer) {
+	h.checker = checker
+	h.debouncer = debouncer
 }
 
 // VerifySignature checks the X-Hub-Signature-256 header against the payload.

@@ -44,12 +44,8 @@ func (h *WebhookHandler) HandlePush(ctx context.Context, event *PushEvent) error
 	return nil
 }
 
-// HandlePullRequest processes a pull_request event for opened/closed/reopened actions.
+// HandlePullRequest processes a pull_request event for opened/closed/reopened/synchronize actions.
 func (h *WebhookHandler) HandlePullRequest(ctx context.Context, event *PullRequestEvent) error {
-	if event.Action != "opened" && event.Action != "closed" && event.Action != "reopened" {
-		return nil
-	}
-
 	ws, err := h.resolveWorkspace(ctx, event.Installation)
 	if err != nil {
 		return fmt.Errorf("find workspace: %w", err)
@@ -65,17 +61,58 @@ func (h *WebhookHandler) HandlePullRequest(ctx context.Context, event *PullReque
 		return fmt.Errorf("ensure repo: %w", err)
 	}
 
-	return h.captures.EmitGitPR(ctx, ws.ID, PRPayload{
-		Number:       event.PullRequest.Number,
-		Title:        event.PullRequest.Title,
-		Body:         event.PullRequest.Body,
-		State:        event.PullRequest.State,
-		Merged:       event.PullRequest.Merged,
-		HTMLURL:      event.PullRequest.HTMLURL,
-		AuthorLogin:  event.PullRequest.User.Login,
-		RepoFullName: event.Repository.FullName,
-		Action:       event.Action,
-	})
+	switch event.Action {
+	case "opened", "closed", "reopened":
+		emitErr := h.captures.EmitGitPR(ctx, ws.ID, PRPayload{
+			Number:       event.PullRequest.Number,
+			Title:        event.PullRequest.Title,
+			Body:         event.PullRequest.Body,
+			State:        event.PullRequest.State,
+			Merged:       event.PullRequest.Merged,
+			HTMLURL:      event.PullRequest.HTMLURL,
+			AuthorLogin:  event.PullRequest.User.Login,
+			RepoFullName: event.Repository.FullName,
+			Action:       event.Action,
+		})
+		if emitErr != nil {
+			return emitErr
+		}
+
+		if event.Action == "opened" || event.Action == "reopened" {
+			h.triggerCheck(ctx, ws, event)
+		}
+		return nil
+
+	case "synchronize":
+		h.triggerCheck(ctx, ws, event)
+		return nil
+
+	default:
+		return nil
+	}
+}
+
+func (h *WebhookHandler) triggerCheck(ctx context.Context, ws WorkspaceRef, event *PullRequestEvent) {
+	if h.checker == nil {
+		return
+	}
+	if h.debouncer != nil && !h.debouncer.ShouldProcess(event.Repository.FullName, event.PullRequest.Number) {
+		fmt.Printf("debounced check for %s#%d\n", event.Repository.FullName, event.PullRequest.Number)
+		return
+	}
+	installID := 0
+	if event.Installation != nil {
+		installID = event.Installation.ID
+	}
+	go func() {
+		err := h.checker.RunPRCheck(context.Background(), ws.ID,
+			event.Repository.FullName, event.PullRequest.Number,
+			event.PullRequest.Head.SHA, event.PullRequest.Base.SHA,
+			installID)
+		if err != nil {
+			fmt.Printf("check failed for %s#%d: %v\n", event.Repository.FullName, event.PullRequest.Number, err)
+		}
+	}()
 }
 
 // HandleInstallation processes an installation event. On "created", it links

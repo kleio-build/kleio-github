@@ -67,6 +67,15 @@ func (okCapture) EmitIssue(ctx context.Context, workspaceID string, issue IssueP
 	return nil
 }
 
+type recordingChecker struct {
+	calls []string
+}
+
+func (r *recordingChecker) RunPRCheck(_ context.Context, workspaceID string, repo string, prNumber int, headSHA, baseSHA string, installationID int) error {
+	r.calls = append(r.calls, repo)
+	return nil
+}
+
 func hubSig(secret string, body []byte) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write(body)
@@ -145,6 +154,37 @@ func TestHandleHTTP_UnknownEventTypeReturnsOK(t *testing.T) {
 
 	h.HandleHTTP(w, r)
 	require.Equal(t, http.StatusOK, w.Code, "body: %s", w.Body.String())
+}
+
+func TestHandlePullRequest_Synchronize(t *testing.T) {
+	checker := &recordingChecker{}
+	debouncer := NewPRDebouncer(0) // no debounce for test
+	h := NewWebhookHandler("s", testWorkspaceLookup{}, okRepo{}, okCapture{})
+	h.WithCheckRunner(checker, debouncer)
+
+	event := &PullRequestEvent{
+		Action:      "synchronize",
+		Number:      1,
+		PullRequest: GHPullRequest{Number: 1, Title: "pr", Head: GHRef{SHA: "abc"}, Base: GHRef{SHA: "def"}},
+		Repository: GHRepository{ID: 1, FullName: "o/r", HTMLURL: "https://github.com/o/r", DefaultBranch: "main"},
+		Installation: &GHInstall{ID: 42},
+	}
+
+	err := h.HandlePullRequest(context.Background(), event)
+	require.NoError(t, err)
+
+	// Give goroutine time to run
+	for i := 0; i < 50 && len(checker.calls) == 0; i++ {
+		t.Log("waiting for check goroutine...")
+		// small sleep
+	}
+}
+
+func TestPRDebouncer(t *testing.T) {
+	d := NewPRDebouncer(100 * 1000000) // 100ms
+	require.True(t, d.ShouldProcess("repo", 1))
+	require.False(t, d.ShouldProcess("repo", 1))
+	require.True(t, d.ShouldProcess("repo", 2))
 }
 
 func TestHandleHTTP_HandlerErrorReturns500(t *testing.T) {
